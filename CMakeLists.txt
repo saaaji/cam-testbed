@@ -11,7 +11,7 @@ find_library(UDEV_LIB udev)
 find_package(OpenCV REQUIRED)
 
 # add executables
-add_executable(my_app src/main.cpp src/cam.cpp)
+add_executable(cam_testbed src/main.cpp src/cam.cpp)
 
-target_include_directories(my_app PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(my_app PRIVATE ${OpenCV_LIBS} ${UDEV_LIB})
+target_include_directories(cam_testbed PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(cam_testbed PRIVATE ${OpenCV_LIBS} ${UDEV_LIB})

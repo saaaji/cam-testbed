@@ -29,7 +29,7 @@ std::optional<std::filesystem::path> probe_dev(const char* serial) {
       auto to_dev = std::filesystem::read_symlink(link);
       
       // match the serial number of the camera
-      printf("TRYING: device @%s with serial #%s\n", link.c_str(), serial);
+      WARN_V4L2_BACKEND("trying match: device @%s with serial #%s", link.c_str(), serial);
       if (link.string().find(serial) != std::string::npos) {
         auto dev_path = v4l_links / to_dev;
 
@@ -48,11 +48,11 @@ std::optional<std::filesystem::path> probe_dev(const char* serial) {
         if (ret != -1) {
           // if we found the video capture device, return the file descriptor
           if (cap.device_caps & V4L2_CAP_VIDEO_CAPTURE) {
-            printf("MATCH: device @%s with serial #%s\n", dev_path.c_str(), serial);
+            WARN_V4L2_BACKEND("successful match: device @%s with serial #%s", dev_path.c_str(), serial);
             return { dev_path };
           }
         } else {
-          perror("couldn't query capabilities of device");
+          WARN_V4L2_BACKEND("couldn't query device (%d): %s", errno, strerror(errno));
           continue;
         }
       }
@@ -68,7 +68,7 @@ std::optional<std::filesystem::path> recover_device(const char *match_serial) {
   // acquire udev handle
   struct udev *udev = udev_new();
   if (!udev) {
-    printf("can't create udev instance\n");
+    WARN_V4L2_BACKEND("can't create udev instance");
     return std::nullopt;
   }
 
@@ -114,6 +114,7 @@ std::optional<std::filesystem::path> recover_device(const char *match_serial) {
             if (cap.device_caps & V4L2_CAP_VIDEO_CAPTURE) {
               auto dev_path = std::filesystem::path(dev_path_c_str);
 
+              WARN_V4L2_BACKEND("recovered device: %s", dev_path_c_str);
               udev_device_unref(vid_driver);
               udev_unref(udev);
 
@@ -195,7 +196,7 @@ int main(int argc, char **argv) {
       auto fps = "fps: " + std::to_string(1000.0 / diff.count());
 
       cv::putText(frame, fps, {0, HEIGHT - 8}, cv::FONT_HERSHEY_SIMPLEX, 1.0, {0, 255, 0}, 2);
-      cv::imshow("frame", frame);
+      cv::imshow("cam_testbed", frame);
       cv::waitKey(1);
     }
   }
