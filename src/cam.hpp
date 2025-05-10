@@ -53,6 +53,12 @@ class VideoCapV4L {
     /// @return 0 on success and -1 on error (enable logging for detailed error information)
     int request_format(int width, int height, const char *pixel_format);
 
+    /// @brief get format after opening camera
+    /// @param width integer to output the width of the capture
+    /// @param height integer to output the height of the capture
+    /// @param pixel_format string to output the pixel format
+    std::tuple<int, int, std::string> check_format();
+
     /// @brief get the video device file descriptor
     /// @return file descriptor of video device
     int get_fd() { return fd; }
@@ -86,6 +92,9 @@ class VideoCapV4L {
       int width = -1;
       int height = -1;
       uint32_t pixel_format = 0;
+      int actual_width = -1;
+      int actual_height = -1;
+      uint32_t actual_pixel_format = 0;
     } requested_format;
 
     /// @brief wrapper for ioctl to Video4Linux, with error checking

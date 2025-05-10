@@ -1,6 +1,3 @@
-#include "cam.hpp"
-#include "util.hpp"
-
 #include <linux/videodev2.h>
 #include <sys/ioctl.h>
 #include <cstddef>
@@ -10,6 +7,9 @@
 #include <filesystem>
 #include <sys/mman.h>
 #include <string.h>
+
+#include "cam.hpp"
+#include "util.hpp"
 
 int VideoCapV4L::free_resources() {
   if (has_buf_lock) {
@@ -76,6 +76,23 @@ int VideoCapV4L::request_format(int width, int height, const char *pixel_format)
   return 0;
 }
 
+std::tuple<int, int, std::string> VideoCapV4L::check_format() {
+  char str[5];
+  
+  str[0] = (requested_format.actual_pixel_format << 0) & 0xff;
+  str[1] = (requested_format.actual_pixel_format << 8) & 0xff;
+  str[2] = (requested_format.actual_pixel_format << 16) & 0xff;
+  str[3] = (requested_format.actual_pixel_format << 24) & 0xff;
+  str[4] = '\0';
+  
+
+  return {
+    requested_format.actual_width,
+    requested_format.actual_height,
+    str
+  };
+}
+
 int VideoCapV4L::open(const char *dev_path) {
   free_resources();
 
@@ -106,7 +123,15 @@ int VideoCapV4L::open(const char *dev_path) {
 
     ret = try_v4l2_ioctl(VIDIOC_ENUM_FMT, &desc);
     if (ret != -1) {
-      printf("\t|__ Enumerated Format: %s\n", desc.description);
+      char str[5];
+
+      str[0] = (desc.pixelformat >> 0) & 0xff;
+      str[1] = (desc.pixelformat >> 8) & 0xff;
+      str[2] = (desc.pixelformat >> 16) & 0xff;
+      str[3] = (desc.pixelformat >> 24) & 0xff;
+      str[4] = '\0';
+
+      printf("\t|__ Enumerated Format: %s (%s)\n", desc.description, str);
 
       if (desc.flags & V4L2_FMT_FLAG_COMPRESSED) {
         printf("\t\t|__ V4L2_FMT_FLAG_COMPRESSED\n");
@@ -178,6 +203,10 @@ int VideoCapV4L::open(const char *dev_path) {
         fmt_in.fmt.pix.width, 
         fmt_in.fmt.pix.height);
     }
+
+    requested_format.actual_width = fmt_in.fmt.pix.width;
+    requested_format.actual_height = fmt_in.fmt.pix.height;
+    requested_format.actual_pixel_format = fmt_in.fmt.pix.pixelformat;
   }
 
   v4l2_requestbuffers buf_req = {0};
@@ -189,7 +218,12 @@ int VideoCapV4L::open(const char *dev_path) {
 
   if (try_v4l2_ioctl(VIDIOC_REQBUFS, &buf_req) == -1 || buf_req.count < buf_count) {
     WARN_V4L2_BACKEND("could not request buffers: (%d/%d received)", buf_req.count, buf_count);
-    return -1;
+    WARN_V4L2_BACKEND("downgrading to %d buffers", buf_req.count);
+
+    buf_count = buf_req.count;
+
+    // not sure if this should fail or not
+    // return -1;
   }
 
   // map buffers

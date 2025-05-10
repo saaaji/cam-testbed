@@ -9,6 +9,9 @@ can test on a cheap USB camera.
 - probing `/dev` for desired camera based on serial number
 - recovery of device nodes via `libudev` polling in the event of lost USB connection
 
+### Tools
+TBD
+
 ### Building:
 - create a `/build` directory, `cd` into it & run `cmake ..`
 - use `make` to build from now on
