@@ -10,6 +10,10 @@ import math
 import re
 import numpy as np
 import ctypes
+from pymodule.raytrace import init_raytrace
+
+# initialize the raytracing module
+raytrace = init_raytrace()
 
 DEFAULT_VENDOR = 'DummyVendor'
 DEFAULT_PRODUCT_NAME = 'DummyV4L2Camera'
@@ -24,20 +28,6 @@ INIT_CMDS = [
   'sudo modprobe -r v4l2loopback',
   'sudo modprobe v4l2loopback devices=1 exclusive_caps=1',
 ]
-
-def init_raytrace():
-  dll_path = os.path.split(__file__)
-  dll_path = os.path.normpath(dll_path[0])
-  dll_path = os.path.join(dll_path, 'lib/libraytrace.so')
-  
-  raytrace = ctypes.CDLL(dll_path)
-
-  raytrace.allocate_image_buffer.argtypes = [ctypes.c_int] * 3
-  raytrace.allocate_image_buffer.restype = ctypes.POINTER(ctypes.c_ubyte)
-
-  raytrace.free_image_buffer.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
-
-  return raytrace
 
 def get_active_pid_cmd(dev_path):
   try:
@@ -121,7 +111,7 @@ def run(args):
   # launch ffmpeg to receive and write frames to loopback device
   canvas = np.zeros((width, height, 3), dtype=np.uint8)
   proc = subprocess.Popen(
-    f'ffmpeg -f rawvideo -pix_fmt bgr24 -s {width}x{height} -i - -f v4l2 -pix_fmt yuyv422 {dev_path}'.split(),
+    f'ffmpeg -f rawvideo -pix_fmt rgb24 -s {width}x{height} -i - -f v4l2 -pix_fmt yuyv422 {dev_path}'.split(),
     stdin=subprocess.PIPE,
     stdout=subprocess.DEVNULL,
     stderr=subprocess.STDOUT,
