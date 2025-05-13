@@ -18,11 +18,12 @@ extern "C" {
     );
 
     float rad = 2.5f;
+    float d = -6.0f;
     
-    vertices[0] = (float3) { -rad, -rad, -3.0f };
-    vertices[1] = (float3) { +rad, -rad, -3.0f };
-    vertices[2] = (float3) { +rad, +rad, -3.0f };
-    vertices[3] = (float3) { -rad, +rad, -3.0f };
+    vertices[0] = (float3) { -rad, -rad, d };
+    vertices[1] = (float3) { +rad, -rad, d };
+    vertices[2] = (float3) { +rad, +rad, d };
+    vertices[3] = (float3) { -rad, +rad, d };
 
     unsigned int* indices = (unsigned int*) rtcSetNewGeometryBuffer(
         geom, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3,
@@ -62,23 +63,13 @@ extern "C" {
       - 1.0
     */
 
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        float ndc_x = (2.0f * x / width - 1.0f);
-        float ndc_y = (1.0f - 2.0f * y / height);
-        // float3 dir = { ndc_x, ndc_y, -1.0f };
-
-        float u = (float) x / width;
-        float v = (float) y / width;
-
-        float f = 0.2;
-
-        u = (u - 0.5) / f;
-        v = (v - 0.5) / f;
-
-        float r2 = u*v+v*v;
-        float r4 = r2*r2;
-        float r6 = r4*r2;
+    for (int v = 0; v < height; v++) {
+      for (int u = 0; u < width; u++) {
+        float cx = 1280 / 2.0;
+        float cy = 720 / 2.0;
+        float fx = 1032.0, fy = 1032.0;
+        float x = (u - cx) / fx;
+        float y = (v - cy) / fy;
 
         float k1 = -0.33;
         float k2 = 0.12;
@@ -86,16 +77,46 @@ extern "C" {
         float p2 = -0.0005;
         float k3 = -0.0227;
 
-        // float k1 = 0.0, k2 = 0.0, p1 = 0.0, p2 = 0.0, k3 = 0.0;
+        float r2 = x*x + y*y;
+        float r4 = r2*r2;
+        float r6 = r2*r4;
 
         float radial = 1 + k1*r2 + k2*r4 + k3*r6;
-        float x_dist = u * radial + 2*p1*u*v + p2*(r2 + 2*u*u);
-        float y_dist = v * radial + p1*(r2+2*v*v) + 2*p2*u*v;
+
+        float x_radial = x * radial;
+        float y_radial = y * radial;
+
+        float x_dist = x_radial + 2*p1*x*y + p2*(r2 + 2*x*x);
+        float y_dist = y_radial + p1*(r2 + 2*y*y) + 2*p2*x*y;
+
+        float3 dir = { x_dist, y_dist, -1.0f };
+
+        // float ndc_x = (2.0f * x / width - 1.0f);
+        // float ndc_y = (1.0f - 2.0f * y / height);
+        // float3 dir = { ndc_x, ndc_y, -1.0f };
+
+        // float u = (float) x / width;
+        // float v = (float) y / width;
+
+        // float f = 0.2;
+
+        // u = (u - 0.5) / f;
+        // v = (v - 0.5) / f;
+
+        // float r2 = u*v+v*v;
+        // float r4 = r2*r2;
+        // float r6 = r4*r2;
+
+
+        // // float k1 = 0.0, k2 = 0.0, p1 = 0.0, p2 = 0.0, k3 = 0.0;
+
+        // float radial = 1 + k1*r2 + k2*r4 + k3*r6;
+        // float x_dist = u * radial + 2*p1*u*v + p2*(r2 + 2*u*u);
+        // float y_dist = v * radial + p1*(r2+2*v*v) + 2*p2*u*v;
 
         // float x_dist = u;
         // float y_dist = v;
-
-        float3 dir = { x_dist, y_dist, -1.0f };
+        // float3 dir = { x_dist, y_dist, -1.0f };
 
         float len = sqrtf(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
         dir.x /= len; dir.y /= len; dir.z /= len;
@@ -117,7 +138,7 @@ extern "C" {
         rtcInitIntersectContext(&context);
         rtcIntersect1(scene, &context, &rayhit);
 
-        int index = (y * width + x) * 3;
+        int index = (v * width + u) * 3;
         if (rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID) {
           float scale = 5.0;
           
