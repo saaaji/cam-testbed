@@ -4,13 +4,15 @@ import subprocess
 import glob
 import os
 import argparse
-import cv2
 import time
-import math
 import re
-import numpy as np
+import math
 import ctypes
-from pymodule.raytrace import init_raytrace
+import faulthandler
+from pymodule.raytrace import init_raytrace, Camera
+
+# debugging
+faulthandler.enable()
 
 # initialize the raytracing module
 raytrace = init_raytrace()
@@ -19,7 +21,7 @@ DEFAULT_VENDOR = 'DummyVendor'
 DEFAULT_PRODUCT_NAME = 'DummyV4L2Camera'
 DEFAULT_SERIAL_NO = 'DUMMY_SERIAL_NO'
 DEFAULT_SIZE = (1280, 720)
-DEFAULT_FPS = '60'
+DEFAULT_FPS = '30'
 
 SIZE_RE = r'^(?P<width>\d+)x(?P<height>\d+)\Z'
 
@@ -109,7 +111,6 @@ def run(args):
     height = int(groupdict.height)
 
   # launch ffmpeg to receive and write frames to loopback device
-  canvas = np.zeros((width, height, 3), dtype=np.uint8)
   proc = subprocess.Popen(
     f'ffmpeg -f rawvideo -pix_fmt rgb24 -s {width}x{height} -i - -f v4l2 -pix_fmt yuyv422 {dev_path}'.split(),
     stdin=subprocess.PIPE,
@@ -129,22 +130,31 @@ def run(args):
 
   buffer_ptr = raytrace.allocate_image_buffer(width, height, 3)
   buffer_size = width * height * 3
-  CLEANUP_TASKS.append(lambda: raytrace.free_image_buffer(buffer_ptr))
+
+  # TODO: figure out why this segfaults
+  # CLEANUP_TASKS.append(lambda: raytrace.free_image_buffer(buffer_ptr))
+  
+  # TODO: load camera YAML
+  camera = Camera(
+    (ctypes.c_int * 2)(width, height),
+    (ctypes.c_float * 4)(width / 2, height / 2, 1032.0, 1032.0),
+    (ctypes.c_float * 8)(-0.5, 0.12, 0.0001, -0.0005, -0.0227, 0, 0, 0),
+  )
+
+  raytrace.init_workers()
   
   while True:
     start = time.time()
     
     # image generation
-    # canvas = np.random.randint(0, 256, size=(width, height, 3), dtype=np.uint8)
-    # proc.stdin.write(canvas.tobytes())
-
+    raytrace.render_frame(buffer_ptr, ctypes.byref(camera), 2*math.pi*(start - int(start)))
     proc.stdin.write(ctypes.string_at(buffer_ptr, buffer_size))
     
     # framerate regulation
     end = time.time()
     time.sleep(max(0, (1 / fps) - (end - start)))
 
-  cleanup()
+  # cleanup()
 
 def main():
   # configure command line arguments

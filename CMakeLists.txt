@@ -23,8 +23,8 @@ target_link_libraries(cam_testbed PRIVATE ${OpenCV_LIBS} ${UDEV_LIB})
 file(GLOB_RECURSE PYTHON_LIB_SOURCES "tools/cmodule/*.cpp")
 if (PYTHON_LIB_SOURCES)
   # find embree
-  find_package(embree 3.0 REQUIRED)
-
+  find_package(embree 4 REQUIRED)
+  
   add_library(raytrace SHARED ${PYTHON_LIB_SOURCES})
   set_target_properties(raytrace PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools/lib

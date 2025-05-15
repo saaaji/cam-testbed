@@ -1,0 +1,1 @@
+float uniform_random();
